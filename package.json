@@ -1,0 +1,17 @@
+{
+  "name": "readdy",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Beautiful pure-text reading link generator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
