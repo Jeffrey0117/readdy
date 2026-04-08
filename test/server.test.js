@@ -386,7 +386,7 @@ test('reading page uses CSS variables for theming', async () => {
   assert.match(r.body, /\[data-theme="dark"\]/);
 });
 
-test('reading page uses wider desktop max-width (720px)', async () => {
+test('reading page uses wider desktop max-width (880px)', async () => {
   const create = await call({
     method: 'POST',
     path: '/api/paste',
@@ -395,7 +395,7 @@ test('reading page uses wider desktop max-width (720px)', async () => {
   });
   const { id, slug } = JSON.parse(create.body);
   const r = await call({ method: 'GET', path: `/${slug}-${id}` });
-  assert.match(r.body, /max-width:\s*720px/);
+  assert.match(r.body, /max-width:\s*880px/);
 });
 
 test('reading page defaults to smaller font on mobile via media query', async () => {

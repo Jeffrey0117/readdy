@@ -215,16 +215,16 @@ function renderReading({ id, content, created_at, title }) {
       transition: background-color .2s ease, color .2s ease;
     }
     .reading {
-      max-width: 720px;
+      max-width: 880px;
       margin: 0 auto;
-      padding: 96px 40px 56px;
+      padding: 96px 56px 56px;
       white-space: pre-wrap;
       word-wrap: break-word;
     }
     .footer {
-      max-width: 720px;
+      max-width: 880px;
       margin: 0 auto;
-      padding: 0 40px 72px;
+      padding: 0 56px 72px;
       font-family: "Inter", "Noto Sans TC", sans-serif;
       font-size: 12px;
       color: var(--footer-fg);
