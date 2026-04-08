@@ -315,3 +315,73 @@ test('GET with malformed slug URL returns 404', async () => {
   const r = await call({ method: 'GET', path: '/hello-toolong12345' });
   assert.equal(r.status, 404);
 });
+
+// ─── reading page UI (toolbar / theme / word count) ───
+
+test('reading page contains the toolbar markup', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world\nbody text' },
+  });
+  const { id, slug } = JSON.parse(create.body);
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
+  assert.equal(r.status, 200);
+  assert.match(r.body, /id="readdy-toolbar"/);
+  assert.match(r.body, /readdy-toggle/);
+});
+
+test('reading page contains FOUC-prevention inline script', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world\nbody text' },
+  });
+  const { id, slug } = JSON.parse(create.body);
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
+  assert.match(r.body, /readdy\.theme/);
+  assert.match(r.body, /readdy\.size/);
+  assert.match(r.body, /readdy\.font/);
+});
+
+test('reading page footer shows word count for ASCII content', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world goodbye' },
+  });
+  const { id, slug } = JSON.parse(create.body);
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
+  // 'helloworldgoodbye' = 17 chars after stripping whitespace
+  assert.match(r.body, /17 字/);
+});
+
+test('reading page footer shows word count for CJK content', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: '今天傍晚從台北車站走回家' },
+  });
+  const { id, slug } = JSON.parse(create.body);
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
+  // 12 CJK chars
+  assert.match(r.body, /12 字/);
+});
+
+test('reading page uses CSS variables for theming', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world\nbody' },
+  });
+  const { id, slug } = JSON.parse(create.body);
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
+  assert.match(r.body, /--bg:/);
+  assert.match(r.body, /--fg:/);
+  assert.match(r.body, /\[data-theme="dark"\]/);
+});
