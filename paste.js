@@ -1,6 +1,7 @@
 'use strict';
 
 const { generateId } = require('./id');
+const { extractTitle } = require('./slug');
 
 const MAX_LEN = 100000;
 const MAX_RETRIES = 5;
@@ -23,14 +24,15 @@ function validate(body) {
 
 function createPaste(db, content, ipHash) {
   const insert = db.prepare(
-    'INSERT INTO pastes (id, content, created_at, views, ip_hash) VALUES (?, ?, ?, 0, ?)'
+    'INSERT INTO pastes (id, content, title, created_at, views, ip_hash) VALUES (?, ?, ?, ?, 0, ?)'
   );
   const now = Date.now();
+  const title = extractTitle(content);
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const id = generateId();
     try {
-      insert.run(id, content, now, ipHash || null);
+      insert.run(id, content, title, now, ipHash || null);
       return id;
     } catch (err) {
       if (err.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') continue;
@@ -42,7 +44,7 @@ function createPaste(db, content, ipHash) {
 
 function fetchPaste(db, id) {
   const update = db.prepare('UPDATE pastes SET views = views + 1 WHERE id = ?');
-  const select = db.prepare('SELECT id, content, created_at, views FROM pastes WHERE id = ?');
+  const select = db.prepare('SELECT id, content, title, created_at, views FROM pastes WHERE id = ?');
 
   const result = update.run(id);
   if (result.changes === 0) return null;

@@ -110,6 +110,25 @@ test('createPaste stores ip_hash', () => {
   assert.equal(row.ip_hash, 'specific_hash_value');
 });
 
+test('createPaste stores extracted title', () => {
+  const id = createPaste(db, '今天傍晚從台北車站\n走回家的路上', 'hash');
+  const row = db.prepare('SELECT title FROM pastes WHERE id = ?').get(id);
+  assert.equal(row.title, '今天傍晚從台北車站');
+});
+
+test('createPaste stores empty string title for whitespace-leading content', () => {
+  // validate() will normally reject this, but we test paste.js directly
+  const id = createPaste(db, '   \nactual title here', 'hash');
+  const row = db.prepare('SELECT title FROM pastes WHERE id = ?').get(id);
+  assert.equal(row.title, 'actual title here');
+});
+
+test('fetchPaste returns title field', () => {
+  const id = createPaste(db, 'first line\nmore content', 'hash');
+  const row = fetchPaste(db, id);
+  assert.equal(row.title, 'first line');
+});
+
 test('db migration adds title column to pre-existing pastes table without it', () => {
   // Build a fresh DB that has the OLD schema (no title column)
   const oldDbPath = path.join(TMP, 'old.db');
