@@ -10,10 +10,21 @@ const SCHEMA = `
     content     TEXT NOT NULL,
     created_at  INTEGER NOT NULL,
     views       INTEGER NOT NULL DEFAULT 0,
-    ip_hash     TEXT
+    ip_hash     TEXT,
+    title       TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_pastes_created ON pastes(created_at);
 `;
+
+function migrate(db) {
+  // Idempotent: add columns that older databases might be missing.
+  // Catch the "duplicate column name" error and ignore it.
+  try {
+    db.exec('ALTER TABLE pastes ADD COLUMN title TEXT');
+  } catch (err) {
+    if (!/duplicate column name/i.test(err.message)) throw err;
+  }
+}
 
 function openDb(dbPath) {
   const dir = path.dirname(dbPath);
@@ -23,6 +34,7 @@ function openDb(dbPath) {
   db.pragma('journal_mode = WAL');
   db.pragma('busy_timeout = 5000');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

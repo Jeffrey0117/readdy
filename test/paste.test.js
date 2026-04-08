@@ -109,3 +109,33 @@ test('createPaste stores ip_hash', () => {
   const row = db.prepare('SELECT ip_hash FROM pastes WHERE id = ?').get(id);
   assert.equal(row.ip_hash, 'specific_hash_value');
 });
+
+test('db migration adds title column to pre-existing pastes table without it', () => {
+  // Build a fresh DB that has the OLD schema (no title column)
+  const oldDbPath = path.join(TMP, 'old.db');
+  const Database = require('better-sqlite3');
+  const oldDb = new Database(oldDbPath);
+  oldDb.exec(`
+    CREATE TABLE pastes (
+      id          TEXT PRIMARY KEY,
+      content     TEXT NOT NULL,
+      created_at  INTEGER NOT NULL,
+      views       INTEGER NOT NULL DEFAULT 0,
+      ip_hash     TEXT
+    );
+  `);
+  oldDb.prepare('INSERT INTO pastes (id, content, created_at) VALUES (?, ?, ?)').run('legacyy', 'old content', 1000);
+  oldDb.close();
+
+  // Now open it through openDb — should add the title column
+  const migrated = openDb(oldDbPath);
+  const cols = migrated.prepare("PRAGMA table_info(pastes)").all();
+  const colNames = cols.map((c) => c.name);
+  assert.ok(colNames.includes('title'), 'title column should exist after migration');
+
+  // Existing row should still be there with title = NULL
+  const row = migrated.prepare('SELECT id, content, title FROM pastes WHERE id = ?').get('legacyy');
+  assert.equal(row.content, 'old content');
+  assert.equal(row.title, null);
+  migrated.close();
+});

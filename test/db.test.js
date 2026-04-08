@@ -41,7 +41,7 @@ test('pastes table has the expected columns', () => {
   const db = openDb(path.join(TMP, 'test.db'));
   const cols = db.prepare("PRAGMA table_info(pastes)").all();
   const names = cols.map((c) => c.name).sort();
-  assert.deepEqual(names, ['content', 'created_at', 'id', 'ip_hash', 'views']);
+  assert.deepEqual(names, ['content', 'created_at', 'id', 'ip_hash', 'title', 'views']);
   db.close();
 });
 
