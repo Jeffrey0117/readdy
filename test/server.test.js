@@ -94,7 +94,12 @@ test('POST /api/paste creates a paste and returns id + url', async () => {
   assert.equal(r.status, 200);
   const data = JSON.parse(r.body);
   assert.match(data.id, /^[a-hjkmnp-z2-9]{7}$/);
-  assert.equal(data.url, `https://readdy.test/${data.id}`);
+  // New behavior: url uses slug-id form when there is a title
+  assert.equal(data.slug, '今天傍晚從台北車站走回家的路上');
+  assert.equal(
+    data.url,
+    `https://readdy.test/${encodeURIComponent('今天傍晚從台北車站走回家的路上')}-${data.id}`
+  );
 });
 
 test('POST /api/paste rejects wrong content-type with 415', async () => {
@@ -171,16 +176,16 @@ test('POST /api/paste rate-limits the 6th request from same IP within a minute',
 
 // ─── GET /:id ───
 
-test('GET /:id renders the reading page for an existing paste', async () => {
+test('GET /:slug-:id renders the reading page for an existing paste', async () => {
   const create = await call({
     method: 'POST',
     path: '/api/paste',
     headers: { 'content-type': 'application/json' },
     body: { content: 'hello world' },
   });
-  const { id } = JSON.parse(create.body);
+  const { id, slug } = JSON.parse(create.body);
 
-  const r = await call({ method: 'GET', path: `/${id}` });
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
   assert.equal(r.status, 200);
   assert.match(r.headers['Content-Type'], /text\/html/);
   assert.match(r.body, /hello world/);
@@ -199,21 +204,21 @@ test('GET /:id with valid format but no record returns 404', async () => {
   assert.equal(r.status, 404);
 });
 
-test('GET /:id escapes XSS in stored content', async () => {
+test('GET /:slug-:id escapes XSS in stored content', async () => {
   const create = await call({
     method: 'POST',
     path: '/api/paste',
     headers: { 'content-type': 'application/json' },
     body: { content: '<script>alert(1)</script>' },
   });
-  const { id } = JSON.parse(create.body);
+  const { id, slug } = JSON.parse(create.body);
 
-  const r = await call({ method: 'GET', path: `/${id}` });
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
   assert.equal(r.body.includes('<script>alert(1)</script>'), false);
   assert.match(r.body, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 });
 
-test('GET /:id round-trips multi-line Chinese content', async () => {
+test('GET /:slug-:id round-trips multi-line Chinese content', async () => {
   const original = '今天傍晚從台北車站\n走回家的路上\n經過一家很小的書店';
   const create = await call({
     method: 'POST',
@@ -221,9 +226,9 @@ test('GET /:id round-trips multi-line Chinese content', async () => {
     headers: { 'content-type': 'application/json' },
     body: { content: original },
   });
-  const { id } = JSON.parse(create.body);
+  const { id, slug } = JSON.parse(create.body);
 
-  const r = await call({ method: 'GET', path: `/${id}` });
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
   // The escaped content (which is identical to the original here, no special chars) appears verbatim
   assert.match(r.body, /今天傍晚從台北車站/);
   assert.match(r.body, /走回家的路上/);
@@ -234,5 +239,79 @@ test('GET /:id round-trips multi-line Chinese content', async () => {
 
 test('unknown route returns 404', async () => {
   const r = await call({ method: 'GET', path: '/some/random/path' });
+  assert.equal(r.status, 404);
+});
+
+// ─── slug URLs ───
+
+test('POST /api/paste returns id, slug, and url with slug form', async () => {
+  const r = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: '今天傍晚從台北車站走回家\n第二段內容' },
+  });
+  assert.equal(r.status, 200);
+  const data = JSON.parse(r.body);
+  assert.match(data.id, /^[a-hjkmnp-z2-9]{7}$/);
+  assert.equal(data.slug, '今天傍晚從台北車站走回家');
+  assert.equal(data.url, `https://readdy.test/${encodeURIComponent('今天傍晚從台北車站走回家')}-${data.id}`);
+});
+
+test('GET /:slug-:id (ascii) renders the reading page', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world\nsecond line' },
+  });
+  const { id } = JSON.parse(create.body);
+
+  const r = await call({ method: 'GET', path: `/hello-world-${id}` });
+  assert.equal(r.status, 200);
+  assert.match(r.body, /hello world/);
+});
+
+test('GET /:id with title returns 301 redirect to slug URL', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world\nsecond line' },
+  });
+  const { id } = JSON.parse(create.body);
+
+  const r = await call({ method: 'GET', path: `/${id}` });
+  assert.equal(r.status, 301);
+  assert.equal(r.headers.Location, `/hello-world-${id}`);
+});
+
+test('GET /:id for legacy paste with NULL title returns 200 directly', async () => {
+  // Insert directly into the DB to simulate legacy data
+  // id must match ID_REGEX (no l/i/o/0/1)
+  db.prepare('INSERT INTO pastes (id, content, created_at, views, ip_hash, title) VALUES (?, ?, ?, 0, ?, NULL)')
+    .run('aaaaaaa', 'old paste content', 1000, 'h');
+
+  const r = await call({ method: 'GET', path: '/aaaaaaa' });
+  assert.equal(r.status, 200);
+  assert.match(r.body, /old paste content/);
+});
+
+test('GET /wrong-slug-:id still renders correctly (slug is cosmetic)', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'real title\nbody' },
+  });
+  const { id } = JSON.parse(create.body);
+
+  const r = await call({ method: 'GET', path: `/totally-wrong-slug-${id}` });
+  assert.equal(r.status, 200);
+  assert.match(r.body, /real title/);
+});
+
+test('GET with malformed slug URL returns 404', async () => {
+  const r = await call({ method: 'GET', path: '/hello-toolong12345' });
   assert.equal(r.status, 404);
 });

@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const { validate, createPaste, fetchPaste } = require('./paste');
 const { renderHomepage, renderReading, renderNotFound } = require('./pages');
 const { ID_REGEX } = require('./id');
+const { makeSlug, parseSlugUrl } = require('./slug');
 
 // ─── helpers ───
 
@@ -21,6 +22,14 @@ function json(res, status, data) {
     'Cache-Control': 'no-store',
   });
   res.end(JSON.stringify(data));
+}
+
+function redirect(res, location) {
+  res.writeHead(301, {
+    Location: location,
+    'Cache-Control': 'no-store',
+  });
+  res.end();
 }
 
 function readJsonBody(req, maxBytes) {
@@ -85,12 +94,19 @@ function publicUrl() {
   return process.env.READDY_PUBLIC_URL || `http://localhost:${process.env.PORT || 4022}`;
 }
 
+function buildPasteUrl(slug, id) {
+  if (slug) {
+    return `${publicUrl()}/${encodeURIComponent(slug)}-${id}`;
+  }
+  return `${publicUrl()}/${id}`;
+}
+
 // ─── handlers ───
 
 async function handle(req, res, db) {
   const url = new URL(req.url, 'http://x');
   const method = req.method;
-  const pathname = url.pathname;
+  const pathname = decodeURIComponent(url.pathname);
 
   // GET /
   if (method === 'GET' && pathname === '/') {
@@ -123,18 +139,36 @@ async function handle(req, res, db) {
     if (!v.ok) return json(res, 400, { error: v.error });
 
     const id = createPaste(db, body.content, ipHash);
-    return json(res, 200, { id, url: `${publicUrl()}/${id}` });
+    // Re-fetch to get the title that was just stored.
+    const row = fetchPaste(db, id);
+    // Undo the views++ side effect since we just created it.
+    db.prepare('UPDATE pastes SET views = 0 WHERE id = ?').run(id);
+    const slug = makeSlug(row.title || '');
+
+    return json(res, 200, {
+      id,
+      slug,
+      url: buildPasteUrl(slug, id),
+    });
   }
 
-  // GET /:id
-  if (method === 'GET' && /^\/[^/]+$/.test(pathname)) {
-    const id = pathname.slice(1);
-    if (!ID_REGEX.test(id)) {
-      return html(res, 404, renderNotFound());
+  // GET /:id  or  GET /:slug-:id
+  if (method === 'GET') {
+    const parsed = parseSlugUrl(pathname);
+    if (parsed.id) {
+      const row = fetchPaste(db, parsed.id);
+      if (!row) return html(res, 404, renderNotFound());
+
+      // Bare-id URL with a titled paste → redirect to slug form
+      if (parsed.slug === null && row.title && row.title.length > 0) {
+        const slug = makeSlug(row.title);
+        if (slug) {
+          return redirect(res, `/${encodeURIComponent(slug)}-${row.id}`);
+        }
+      }
+
+      return html(res, 200, renderReading(row));
     }
-    const row = fetchPaste(db, id);
-    if (!row) return html(res, 404, renderNotFound());
-    return html(res, 200, renderReading(row));
   }
 
   // Anything else
