@@ -32,3 +32,41 @@ test('extractTitle handles single line with no newline', () => {
 test('extractTitle handles Chinese content', () => {
   assert.equal(extractTitle('今天傍晚從台北車站走回家\n第二段'), '今天傍晚從台北車站走回家');
 });
+
+const { makeSlug } = require('../slug');
+
+test('makeSlug lowercases ASCII', () => {
+  assert.equal(makeSlug('Hello World'), 'hello-world');
+});
+
+test('makeSlug replaces whitespace runs with single hyphen', () => {
+  assert.equal(makeSlug('a   b\tc'), 'a-b-c');
+});
+
+test('makeSlug strips punctuation', () => {
+  assert.equal(makeSlug('Hello, World!'), 'hello-world');
+});
+
+test('makeSlug collapses multiple hyphens', () => {
+  assert.equal(makeSlug('a -- b -- c'), 'a-b-c');
+});
+
+test('makeSlug trims leading and trailing hyphens', () => {
+  assert.equal(makeSlug('  --hello--  '), 'hello');
+});
+
+test('makeSlug keeps CJK characters intact', () => {
+  assert.equal(makeSlug('今天傍晚從台北車站走回家'), '今天傍晚從台北車站走回家');
+});
+
+test('makeSlug joins CJK and ASCII with hyphen on whitespace', () => {
+  assert.equal(makeSlug('今天 hello world'), '今天-hello-world');
+});
+
+test('makeSlug returns empty string for empty input', () => {
+  assert.equal(makeSlug(''), '');
+});
+
+test('makeSlug returns empty string for punctuation-only input', () => {
+  assert.equal(makeSlug('!!! ??? ...'), '');
+});

@@ -14,4 +14,15 @@ function extractTitle(content) {
   return '';
 }
 
-module.exports = { extractTitle, TITLE_MAX };
+function makeSlug(title) {
+  if (typeof title !== 'string') return '';
+  return title
+    .toLowerCase()
+    // Replace anything that is not letter / number / underscore with a hyphen.
+    // \p{L} = any Unicode letter (covers CJK), \p{N} = any number.
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+module.exports = { extractTitle, makeSlug, TITLE_MAX };
