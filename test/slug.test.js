@@ -70,3 +70,41 @@ test('makeSlug returns empty string for empty input', () => {
 test('makeSlug returns empty string for punctuation-only input', () => {
   assert.equal(makeSlug('!!! ??? ...'), '');
 });
+
+const { parseSlugUrl } = require('../slug');
+
+test('parseSlugUrl extracts id from bare /:id', () => {
+  assert.deepEqual(parseSlugUrl('/abcdefg'), { slug: null, id: 'abcdefg' });
+});
+
+test('parseSlugUrl extracts id from /:slug-:id (ascii slug)', () => {
+  assert.deepEqual(parseSlugUrl('/hello-world-abcdefg'), { slug: 'hello-world', id: 'abcdefg' });
+});
+
+test('parseSlugUrl extracts id from /:slug-:id (cjk slug)', () => {
+  assert.deepEqual(
+    parseSlugUrl('/今天傍晚從台北車站走回家-abcdefg'),
+    { slug: '今天傍晚從台北車站走回家', id: 'abcdefg' }
+  );
+});
+
+test('parseSlugUrl returns nulls for malformed url (no leading slash)', () => {
+  assert.deepEqual(parseSlugUrl('abcdefg'), { slug: null, id: null });
+});
+
+test('parseSlugUrl returns nulls when id portion has invalid characters', () => {
+  // 'i' is not in the alphabet
+  assert.deepEqual(parseSlugUrl('/hello-abciefg'), { slug: null, id: null });
+});
+
+test('parseSlugUrl returns nulls when id portion is wrong length', () => {
+  assert.deepEqual(parseSlugUrl('/hello-abcde'), { slug: null, id: null });
+});
+
+test('parseSlugUrl returns nulls for /', () => {
+  assert.deepEqual(parseSlugUrl('/'), { slug: null, id: null });
+});
+
+test('parseSlugUrl handles slug containing hyphens', () => {
+  assert.deepEqual(parseSlugUrl('/a-b-c-d-abcdefg'), { slug: 'a-b-c-d', id: 'abcdefg' });
+});

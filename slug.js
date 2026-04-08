@@ -1,5 +1,8 @@
 'use strict';
 
+const { ID_REGEX } = require('./id');
+const SLUG_ID_REGEX = /^(.+)-([a-hjkmnp-z2-9]{7})$/;
+
 const TITLE_MAX = 60;
 
 function extractTitle(content) {
@@ -25,4 +28,25 @@ function makeSlug(title) {
     .replace(/^-|-$/g, '');
 }
 
-module.exports = { extractTitle, makeSlug, TITLE_MAX };
+function parseSlugUrl(pathname) {
+  if (typeof pathname !== 'string' || !pathname.startsWith('/')) {
+    return { slug: null, id: null };
+  }
+  const rest = pathname.slice(1);
+  if (rest.length === 0) return { slug: null, id: null };
+
+  // Bare id case: matches ID_REGEX exactly
+  if (ID_REGEX.test(rest)) {
+    return { slug: null, id: rest };
+  }
+
+  // /:slug-:id case
+  const m = rest.match(SLUG_ID_REGEX);
+  if (m) {
+    return { slug: m[1], id: m[2] };
+  }
+
+  return { slug: null, id: null };
+}
+
+module.exports = { extractTitle, makeSlug, parseSlugUrl, TITLE_MAX };
