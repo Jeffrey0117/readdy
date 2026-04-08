@@ -215,22 +215,23 @@ function renderReading({ id, content, created_at, title }) {
       transition: background-color .2s ease, color .2s ease;
     }
     .reading {
-      max-width: 600px;
+      max-width: 720px;
       margin: 0 auto;
-      padding: 80px 32px 48px;
+      padding: 96px 40px 56px;
       white-space: pre-wrap;
       word-wrap: break-word;
     }
     .footer {
-      max-width: 600px;
+      max-width: 720px;
       margin: 0 auto;
-      padding: 0 32px 64px;
+      padding: 0 40px 72px;
       font-family: "Inter", "Noto Sans TC", sans-serif;
       font-size: 12px;
       color: var(--footer-fg);
       letter-spacing: .04em;
     }
     @media (max-width: 600px) {
+      :root { --font-size: 16px; }
       .reading { padding: 48px 24px 32px; }
       .footer { padding: 0 24px 48px; }
     }

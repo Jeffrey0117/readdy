@@ -385,3 +385,28 @@ test('reading page uses CSS variables for theming', async () => {
   assert.match(r.body, /--fg:/);
   assert.match(r.body, /\[data-theme="dark"\]/);
 });
+
+test('reading page uses wider desktop max-width (720px)', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world\nbody' },
+  });
+  const { id, slug } = JSON.parse(create.body);
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
+  assert.match(r.body, /max-width:\s*720px/);
+});
+
+test('reading page defaults to smaller font on mobile via media query', async () => {
+  const create = await call({
+    method: 'POST',
+    path: '/api/paste',
+    headers: { 'content-type': 'application/json' },
+    body: { content: 'hello world\nbody' },
+  });
+  const { id, slug } = JSON.parse(create.body);
+  const r = await call({ method: 'GET', path: `/${slug}-${id}` });
+  // Mobile media query should override --font-size to 16px
+  assert.match(r.body, /@media\s*\(max-width:\s*600px\)[\s\S]*?--font-size:\s*16px/);
+});
