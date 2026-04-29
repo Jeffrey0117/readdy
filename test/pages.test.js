@@ -111,17 +111,14 @@ test('renderReading includes white-space: pre-wrap', () => {
   assert.match(html, /pre-wrap/);
 });
 
-test('renderReading shows formatted Chinese date', () => {
-  // 2026-04-07 in ms
+test('renderReading footer shows word count without date', () => {
   const html = renderReading({
     id: 'k7p2qra',
     content: 'hi',
     created_at: new Date('2026-04-07T00:00:00Z').getTime(),
   });
-  assert.match(html, /2026/);
-  assert.match(html, /4/);
-  assert.match(html, /7/);
   assert.match(html, /readdy/);
+  assert.doesNotMatch(html, /2026/);
 });
 
 // ─── renderNotFound ───

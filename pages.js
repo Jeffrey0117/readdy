@@ -312,7 +312,7 @@ function renderReading({ id, content, created_at, title }) {
 </head>
 <body>
   <article class="reading">${escapeHtml(content)}</article>
-  <div class="footer">${formatChineseDate(created_at)} · ${wordCount} 字 · readdy</div>
+  <div class="footer">${wordCount} 字 · readdy</div>
 
   <div id="readdy-toolbar">
     <div class="readdy-panel">
