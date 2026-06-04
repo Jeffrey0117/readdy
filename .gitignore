@@ -7,3 +7,6 @@ data/
 .env
 .pm2-start.cjs
 .DS_Store
+.pm2-ecosystem.json
+.pkg-hash
+.deploy-state.json
