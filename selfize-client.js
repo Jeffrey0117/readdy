@@ -42,7 +42,13 @@ function makeSelfize(opts = {}) {
       const body = { name, schema };
       if (rules) body.rules = rules;
       const created = await call('POST', '/api/collections', body);
-      if (!created.ok) throw new Error(`selfize: create collection ${name} failed (${created.status}): ${JSON.stringify(created.data)}`);
+      if (!created.ok) {
+        // Selfize collection-mgmt endpoints can 401 even for the admin token; the
+        // /records endpoints still work AND auto-create the collection on write.
+        // So this is NON-FATAL — warn and let records ops proceed (no crash on boot).
+        console.warn(`selfize: ensureCollection ${name} skipped (${created.status}) — records ops auto-create`);
+        return null;
+      }
       return created.data;
     },
 
