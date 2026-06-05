@@ -8,9 +8,7 @@
     "start": "node server.js",
     "test": "node --test test/*.test.js"
   },
-  "dependencies": {
-    "better-sqlite3": "^11.0.0"
-  },
+  "dependencies": {},
   "engines": {
     "node": ">=18"
   }

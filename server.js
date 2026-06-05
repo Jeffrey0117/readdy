@@ -1,17 +1,19 @@
 'use strict';
 
 const http = require('node:http');
-const path = require('node:path');
 const { openDb } = require('./db');
 const { handle } = require('./router');
 
 const PORT = parseInt(process.env.PORT || '4022', 10);
-const DB_PATH = path.join(__dirname, 'data', 'readdy.db');
 
-const db = openDb(DB_PATH);
+let db = null;
 
 const server = http.createServer(async (req, res) => {
   try {
+    if (!db) {
+      res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify({ error: 'starting up' }));
+    }
     await handle(req, res, db);
   } catch (err) {
     console.error('[readdy]', req.method, req.url, '→', err.message);
@@ -24,17 +26,16 @@ const server = http.createServer(async (req, res) => {
 
 function shutdown(signal) {
   console.log(`[readdy] received ${signal}, shutting down…`);
-  server.close(() => {
-    try { db.close(); } catch {}
-    process.exit(0);
-  });
-  // Hard exit if close hangs
+  server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000).unref();
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-server.listen(PORT, () => {
-  console.log(`[readdy] listening on http://localhost:${PORT}`);
-});
+(async () => {
+  db = await openDb();
+  server.listen(PORT, () => {
+    console.log(`[readdy] listening on http://localhost:${PORT} (selfize-backed)`);
+  });
+})();

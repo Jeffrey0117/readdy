@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const { validate, createPaste, fetchPaste } = require('./paste');
 const { renderHomepage, renderReading, renderNotFound } = require('./pages');
 const { ID_REGEX } = require('./id');
-const { makeSlug, parseSlugUrl } = require('./slug');
+const { makeSlug, parseSlugUrl, extractTitle } = require('./slug');
 
 // ─── helpers ───
 
@@ -138,12 +138,8 @@ async function handle(req, res, db) {
     const v = validate(body);
     if (!v.ok) return json(res, 400, { error: v.error });
 
-    const id = createPaste(db, body.content, ipHash);
-    // Re-fetch to get the title that was just stored.
-    const row = fetchPaste(db, id);
-    // Undo the views++ side effect since we just created it.
-    db.prepare('UPDATE pastes SET views = 0 WHERE id = ?').run(id);
-    const slug = makeSlug(row.title || '');
+    const id = await createPaste(db, body.content, ipHash);
+    const slug = makeSlug(extractTitle(body.content) || '');
 
     return json(res, 200, {
       id,
@@ -156,7 +152,7 @@ async function handle(req, res, db) {
   if (method === 'GET') {
     const parsed = parseSlugUrl(pathname);
     if (parsed.id) {
-      const row = fetchPaste(db, parsed.id);
+      const row = await fetchPaste(db, parsed.id);
       if (!row) return html(res, 404, renderNotFound());
 
       // Bare-id URL with a titled paste → redirect to slug form
