@@ -5,3 +5,6 @@ data/
 *.log
 .claudebot.lock
 *.bak-*
+
+.pkg-hash
+.pm2-ecosystem.json
